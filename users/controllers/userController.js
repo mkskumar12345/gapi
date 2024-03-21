@@ -1,13 +1,12 @@
 const Joi = require("joi");
 const { CreateError } = require("../../utils/create_err");
-const bcrypt = require("bcrypt");
 const { trycatch } = require("../../utils/try_catch");
 const util = require('util');
 const jwt = require('jsonwebtoken')
 const signAsync = util.promisify(jwt.sign);
 
 var registration = async (req, res, next, transaction) => {
-  const { firstName, lastName, mobile, email, password } = req.body;
+  const { firstName, lastName, mobile, email, gender, block_id, village_id } = req.body;
 
   const schema = Joi.object({
     firstName: Joi.string().max(50).required(),
@@ -16,7 +15,17 @@ var registration = async (req, res, next, transaction) => {
       .pattern(/^[0-9]{10}$/)
       .required(),
     email: Joi.string().max(50).required(),
-    password: Joi.string().max(50).required(),
+    gender: Joi.string().max(11).required().valid("Male", "Female", "Others"),
+    block_id: Joi.number()
+      .integer()
+      .max(9007199254740991)
+      .positive()
+      .required(),
+      village_id: Joi.number()
+      .integer()
+      .max(9007199254740991)
+      .positive()
+      .required(),
   });
 
   const { error } = await schema.validateAsync(req.body);
@@ -25,7 +34,6 @@ var registration = async (req, res, next, transaction) => {
     throw new CreateError("ValidationError", error.details[0].message);
   }
 
-  const hashedPassword = await bcrypt.hash(password, 10);
 
   const existingUser = await transaction("users").where({ mobile }).first();
   if (existingUser) {
@@ -39,21 +47,23 @@ var registration = async (req, res, next, transaction) => {
     email,
     firstName,
     lastName,
-    password: hashedPassword,
+    gender,
+    block_id,
+    village_id,
     status: 0,
   });
 
-  res.send({ status: 1, message: "users added successfully" });
+  res.send({ status: '001', message: "users added successfully" });
 };
 
 var userLogin = async (req, res, next, transaction) => {
-  const { mobile, password } = req.body;
+  const { mobile, isOfficial } = req.body;
 
   const schema = Joi.object({
     mobile: Joi.string()
       .pattern(/^[0-9]{10}$/)
       .required(),
-    password: Joi.string().max(50).required(),
+    isOfficial:Joi.number().positive().required().valid(0, 1) //1 official, 0 citizen
   });
 
   const { error } = await schema.validateAsync(req.body);
@@ -69,13 +79,11 @@ var userLogin = async (req, res, next, transaction) => {
   
     if (!user) {
       res.send({ status: '002', message: "Mobile is not Registered" });
-    } else {
-      const isMatch = bcrypt.compareSync(password, user.password);
-  
-      if (isMatch) {
+    } else {  
         const payload = {
           id: user.id,
           private_key: process.env.user_key,
+          is_official:user.status
         };
         try {
           const token = await signAsync(payload, process.env.secret_key);
@@ -91,9 +99,7 @@ var userLogin = async (req, res, next, transaction) => {
         } catch (err) {
           res.send({ status: '002', message: "error occured"});
         }
-      } else {
-        res.send({ status: '002', message: "Incorrect password" });
-      }
+      
     }
 };
 

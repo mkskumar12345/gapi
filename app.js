@@ -7,6 +7,11 @@ const userRoute = require('./users/routes/userRoute');
 
 const usersRoute = require('./super_admin/routes/usersRoute');
 const grievanceRoute = require('./users/routes/grievanceRoute');
+const districtRoute = require('./super_admin/routes/districtRoute');
+const villageRoute = require('./super_admin/routes/villageRoute');
+const blockRoute = require('./super_admin/routes/blockRoute');
+const projectRoute = require('./users/routes/projectRoute');
+const areasRoute = require('./users/routes/areasRoute');
 require('dotenv').config();
 
 
@@ -21,10 +26,15 @@ app.use(bodyParser.json());
 //routes for admin
 app.use(adminRoute);
 app.use(usersRoute);
+app.use(districtRoute);
+app.use(villageRoute);
+app.use(blockRoute);
 
 //route for users
 app.use(userRoute);
 app.use(grievanceRoute);
+app.use(projectRoute);
+app.use(areasRoute);
 
 
 app.get("/check",(req,res)=>res.send({msg:"Super Admin is working"}))
