@@ -71,40 +71,202 @@ var addGrievance = async (req, res, next, transaction) => {
     .json({ status: "002", message: "Grievance submitted successfully" });
 };
 
-var show_no_of_grievances = async (req, res, next, transaction) => {
-  const counts = await transaction("grievances")
-    .select("grievance_status")
-    .count("id as count")
-    .groupBy("grievance_status");
+// var check_api = async (req, res, next, transaction) => {
+//   const {user_id}  = req.body;
 
-  // Prepare response
-  const grievanceCounts = {
-    pending: 0,
-    closed: 0,
-    rejected: 0,
-  };
 
-  // Update response with counts
-  counts.forEach((item) => {
-    switch (item.grievance_status) {
-      case 0:
-        grievanceCounts.pending = item.count;
-        break;
-      case 1:
-        grievanceCounts.closed = item.count;
-        break;
-      case 2:
-        grievanceCounts.rejected = item.count;
-        break;
-    }
+//   const schema = Joi.object({
+//     user_id: Joi.number()
+//       .integer()
+//       .max(9007199254740991)
+//       .positive()
+//       .required(),
+    
+//   });
+
+//   const { error } = await schema.validateAsync(req.body);
+//   if (error) {
+//     throw new CreateError("ValidationError", error.details[0].message);
+//   }
+
+//   const [status] = await transaction("users").pluck('status').where('id',user_id)
+
+//   if(status == 1){
+//     const counts = await transaction("projects")
+//       .select("project_status")
+//       .count("id as count")
+//       .groupBy("project_status");
+
+  
+//     // Prepare response
+//     const projects_counts = {
+//       pending: 0,
+//       closed: 0,
+//       rejected: 0,
+//     };
+
+//     // Update response with counts
+//     counts.forEach((item) => {
+//       switch (item.project_status) {
+//         case 0:
+//           projects_counts.pending = item.count;
+//           break;
+//         case 1:
+//           projects_counts.closed = item.count;
+//           break;
+//         case 2:
+//           projects_counts.rejected = item.count;
+//           break;
+//       }
+//     });
+  
+//     // Calculate total count
+//     projects_counts.total =
+//       projects_counts.pending + projects_counts.closed + projects_counts.rejected;
+
+//     return  res.status(200).json({ status: "001", projects_counts });
+//   }else{
+//     const counts = await transaction("grievances")
+//     .select("grievance_status")
+//     .count("id as count")
+//     .groupBy("grievance_status");
+
+//   // Prepare response
+//   const grievanceCounts = {
+//     pending: 0,
+//     closed: 0,
+//     rejected: 0,
+//   };
+
+//   // Update response with counts
+//   counts.forEach((item) => {
+//     switch (item.grievance_status) {
+//       case 0:
+//         grievanceCounts.pending = item.count;
+//         break;
+//       case 1:
+//         grievanceCounts.closed = item.count;
+//         break;
+//       case 2:
+//         grievanceCounts.rejected = item.count;
+//         break;
+//     }
+//   });
+
+//   // Calculate total count
+//   grievanceCounts.total =
+//     grievanceCounts.pending + grievanceCounts.closed + grievanceCounts.rejected;
+
+//   res.status(200).json({ status: "001", grievanceCounts });
+//   }
+
+  
+// };
+
+var check_api = async (req, res, next, transaction) => {
+  const { user_id } = req.body;
+
+  const schema = Joi.object({
+    user_id: Joi.number()
+      .integer()
+      .max(9007199254740991)
+      .positive()
+      .required(),
   });
 
-  // Calculate total count
-  grievanceCounts.total =
-    grievanceCounts.pending + grievanceCounts.closed + grievanceCounts.rejected;
+  const { error } = await schema.validateAsync(req.body);
+  if (error) {
+    throw new CreateError("ValidationError", error.details[0].message);
+  }
 
-  res.status(200).json({ status: "001", grievanceCounts });
+  const [status] = await transaction("users")
+    .pluck("status")
+    .where("id", user_id);
+
+  if (status == 1) {
+    // Fetch recent projects
+    const recentProjects = await transaction("projects")
+      .select("*")
+      .orderBy("created_at", "desc")
+      .limit(3);
+
+    const counts = await transaction("projects")
+      .select("project_status")
+      .count("id as count")
+      .groupBy("project_status");
+
+    // Prepare response
+    const projects_counts = {
+      pending: 0,
+      closed: 0,
+      rejected: 0,
+    };
+
+    // Update response with counts
+    counts.forEach((item) => {
+      switch (item.project_status) {
+        case 0:
+          projects_counts.pending = item.count;
+          break;
+        case 1:
+          projects_counts.closed = item.count;
+          break;
+        case 2:
+          projects_counts.rejected = item.count;
+          break;
+      }
+    });
+
+    // Calculate total count
+    projects_counts.total =
+      projects_counts.pending + projects_counts.closed + projects_counts.rejected;
+
+    return res
+      .status(200)
+      .json({ status: "001", projects_counts, recentProjects });
+  } else {
+    // Fetch recent grievances
+    const recentGrievances = await transaction("grievances")
+      .select("*")
+      .orderBy("created_at", "desc")
+      .limit(3);
+
+    const counts = await transaction("grievances")
+      .select("grievance_status")
+      .count("id as count")
+      .groupBy("grievance_status");
+
+    // Prepare response
+    const grievanceCounts = {
+      pending: 0,
+      closed: 0,
+      rejected: 0,
+    };
+
+    // Update response with counts
+    counts.forEach((item) => {
+      switch (item.grievance_status) {
+        case 0:
+          grievanceCounts.pending = item.count;
+          break;
+        case 1:
+          grievanceCounts.closed = item.count;
+          break;
+        case 2:
+          grievanceCounts.rejected = item.count;
+          break;
+      }
+    });
+
+    // Calculate total count
+    grievanceCounts.total =
+      grievanceCounts.pending + grievanceCounts.closed + grievanceCounts.rejected;
+
+    res.status(200).json({ status: "001", grievanceCounts, recentGrievances });
+  }
 };
+
+
 
 var show_all_grievances = async (req, res, next, transaction) => {
   const grievances = await transaction("grievances").select("*");
@@ -178,11 +340,11 @@ var view_grievance_by_id = async(req,res,next,transaction)=>{
 // }
 
 addGrievance = trycatch(addGrievance);
-show_no_of_grievances = trycatch(show_no_of_grievances);
+check_api = trycatch(check_api);
 show_all_grievances = trycatch(show_all_grievances);
 grievances_by_type = trycatch(grievances_by_type);
 view_grievance_by_id = trycatch(view_grievance_by_id);
 // closed_grievances = trycatch(closed_grievances);
 // rejected_grievances = trycatch(rejected_grievances);
 
-module.exports = { addGrievance, show_no_of_grievances, show_all_grievances , grievances_by_type, view_grievance_by_id};
+module.exports = { addGrievance, check_api, show_all_grievances , grievances_by_type, view_grievance_by_id};
